@@ -1,6 +1,7 @@
 from selenium import webdriver
 from selenium.webdriver.common.keys import Keys
 import json
+import os
 import requests
 
 class ConsultaAPI:
@@ -44,10 +45,12 @@ def obtener_informacion_compuesto(cid):
     #else:
     #    print("Error en la solicitud:", response.status_code)
 
+
+comp_name_list = [ ]
 def menu_principal():
-    print("Bienvenido a PUBCHEM search.")
-    print("1. Consultas web")
-    print("2. Consultas de registros")
+    global comp_name_list
+    print("1. Consultas web: Descarga información del compuesto que desees")
+    print("2. Consultas de registros: Consulta la información descargada")
     print("3. Estadísticas")
     print("4. Gráficas")
     print("5. Borrar todo")
@@ -61,12 +64,32 @@ def menu_principal():
 
         comp_name = input("Ingrese el nombre del compuesto a buscar: ")
         cid = consulta.realizar_consulta(comp_name)
+        comp_name_list.append(comp_name)
 
         data_json = obtener_informacion_compuesto(cid)
         data_str = json.dumps(data_json, indent=4)
 
-        with open("info_compuesto.txt", "w") as file:
+        with open(str(comp_name)+".txt", "w") as file:
             file.write(data_str)
+    elif opcion == "5":
+        borrar_todo()
+    elif opcion == "6":
+        borrar_todo()
+        opcion = False
+        return opcion
     else:
         print("Opción no válida. Por favor, seleccione una opción válida.")
         menu_principal()
+    return opcion
+
+def borrar_todo():
+    global comp_name_list
+    for comp_name in (comp_name_list):
+        if os.path.exists(str(comp_name)+".txt"):
+            os.remove(str(comp_name)+".txt")
+            print(f"El archivo {str(comp_name)+".txt"} ha sido borrado exitosamente.")
+        """
+        else:
+            print(f"El archivo {str(comp_name)+".txt"} no existe.")
+        
+        """
