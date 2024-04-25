@@ -1,6 +1,7 @@
 import json
 import os
 import requests
+import openpyxl 
 
 class ConsultaAPI:
     def __init__(self, url_base):
@@ -43,7 +44,6 @@ def obtener_informacion_compuesto(cid):
     #else:
     #    print("Error en la solicitud:", response.status_code)
 
-
 comp_name_list = [ ]
 def menu_principal():
     global comp_name_list
@@ -61,6 +61,8 @@ def menu_principal():
         consulta = ConsultaAPI(url_base)
 
         comp_name = input("Ingrese el nombre del compuesto a buscar: ")
+        # Funcion que quita tildes y regresa en lower case
+        comp_name = normalize(comp_name)
         cid = consulta.realizar_consulta(comp_name)
         comp_name_list.append(comp_name)
 
@@ -91,3 +93,16 @@ def borrar_todo():
             print(f"El archivo {str(comp_name)+".txt"} no existe.")
         
         """
+
+def normalize(s):
+    replacements = (
+        ("á", "a"),
+        ("é", "e"),
+        ("í", "i"),
+        ("ó", "o"),
+        ("ú", "u"),
+    )
+    for a, b in replacements:
+        s = s.replace(a, b)
+        s = s.casefold()
+    return s
