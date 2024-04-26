@@ -2,14 +2,15 @@
 import time
 import pandas
 import requests
-from bs4 import BeautifulSoup
-from proof_mods import *
+from consultas_mods import *
+
 
 def main():
     print("Bienvenido a PUBCHEM search.")
-    opcion = menu_principal()
+    opcion = menu()
     while opcion:
         print("")
-        opcion = menu_principal()
+        opcion = menu()
+
 if __name__ == "__main__":
     main()  
