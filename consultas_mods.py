@@ -72,11 +72,15 @@ def menu():
                     print(data)
             else:
                 print("Aun no hay archivos descargados.")
-            #abrir_xlsx(comp_name_list)
-        
         elif opcion == 3:
-            pass
-        
+            if len(comp_name_list) == 0:
+                print("No hay datos disponibles. Realiza consultas web primero.")
+            else:
+                df_compuestos = pd.DataFrame(tomar_datos(comp_name_list))
+                estadisticas = generar_estadisticas(df_compuestos)
+                df_estadisticas = pd.DataFrame(estadisticas)
+                print("\nEstadísticas de los compuestos:")
+                print(df_estadisticas)
         elif opcion == 4:
             if len(comp_name_list) == 0:
                 print("No hay datos disponibles. Realiza consultas web primero.")
@@ -84,7 +88,6 @@ def menu():
                 df_compuestos = pd.DataFrame(tomar_datos(comp_name_list))
                 estadisticas = generar_estadisticas(df_compuestos)
                 graficar_estadisticas(estadisticas)
-        
         elif opcion == 5:
             borrar_todo()
         elif opcion == 6:
