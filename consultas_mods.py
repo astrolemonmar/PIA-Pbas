@@ -1,7 +1,8 @@
 import json
 import os
 import requests
-import openpyxl 
+import openpyxl
+import matplotlib as plt 
 
 def normalize(s):
     replacements = (
@@ -111,3 +112,24 @@ def borrar_todo():
             print(f"El archivo {str(comp_name)+".txt"} no existe.")
         """
 
+def graficar_estadisticas(estadisticas):
+    variables = estadisticas['Variable']
+    cantidad_datos = estadisticas['Cantidad de datos']
+    promedio = estadisticas['Promedio de la variable']
+    desviacion_estandar = estadisticas['Desviación estandar']
+    valor_minimo = estadisticas['Valor mínimo']
+    cuartil_1 = estadisticas['Percentil 25 o Cuartil 1']
+    mediana = estadisticas['Percentil 50 o Mediana']
+    cuartil_3 = estadisticas['Percentil 75 o Cuartil 3']
+    valor_maximo = estadisticas['Valor máximo']
+ 
+    fig, axes = plt.subplots(nrows=2, ncols=3, figsize=(15, 10))
+ 
+    for i, ax in enumerate(axes.flatten()):
+        if i < len(variables):
+            ax.bar(['Cantidad de datos', 'Promedio', 'Desviación estándar', 'Mínimo', 'Cuartil 1', 'Mediana', 'Cuartil 3', 'Máximo'],
+                   [cantidad_datos[i], promedio[i], desviacion_estandar[i], valor_minimo[i], cuartil_1[i], mediana[i], cuartil_3[i], valor_maximo[i]])
+            ax.set_title(f'Estadísticas de {variables[i]}')
+ 
+    plt.tight_layout()
+    plt.show()
