@@ -28,34 +28,39 @@ def menu():
     print("6. Salir")
 
     opcion = input("Ingrese el número de la opción deseada: ")
+    try:
+        opcion = int(opcion)
+        if opcion == 1:
+            url_base = "https://pubchem.ncbi.nlm.nih.gov/rest/pug"
+            consulta = ConsultaAPI(url_base)
 
-    if opcion == "1":
-        url_base = "https://pubchem.ncbi.nlm.nih.gov/rest/pug"
-        consulta = ConsultaAPI(url_base)
+            comp_name = input("Ingrese el nombre del compuesto a buscar: ")
+            # Funcion que quita tildes y regresa en lower case
+            comp_name = normalize(comp_name)
+            cid = consulta.realizar_consulta(comp_name)
 
-        comp_name = input("Ingrese el nombre del compuesto a buscar: ")
-        # Funcion que quita tildes y regresa en lower case
-        comp_name = normalize(comp_name)
-        cid = consulta.realizar_consulta(comp_name)
-
-        data_json = obtener_informacion_compuesto(cid)
-        if data_json is None:
-            print("Archivo no guardado")
+            data_json = obtener_informacion_compuesto(cid)
+            if data_json is None:
+                print("Archivo no guardado")
+            else:
+                comp_name_list.append(comp_name)
+                data_str = json.dumps(data_json, indent=4)
+                with open(str(comp_name)+".txt", "w") as file:
+                    file.write(data_str)
+                print(f"Archivo {comp_name} guardado con éxito!")
+        elif opcion == 5:
+            borrar_todo()
+        elif opcion == 6:
+            borrar_todo()
+            opcion = False
+            return opcion
         else:
-            comp_name_list.append(comp_name)
-            data_str = json.dumps(data_json, indent=4)
-            with open(str(comp_name)+".txt", "w") as file:
-                file.write(data_str)
-    elif opcion == "5":
-        borrar_todo()
-    elif opcion == "6":
-        borrar_todo()
-        opcion = False
+            print("Opción no válida. Por favor, seleccione una opción válida.")
+            menu()
         return opcion
-    else:
+    except ValueError:
         print("Opción no válida. Por favor, seleccione una opción válida.")
         menu()
-    return opcion
 
 class ConsultaAPI:
     def __init__(self, url_base):
@@ -66,21 +71,20 @@ class ConsultaAPI:
 
         try:
             response = requests.get(url_comp)
-            response.raise_for_status() #raises http error if one ocures
+            response.raise_for_status()
             data = response.json()
             cid = data["IdentifierList"]["CID"][0]
-            #print(data)
             return cid
         except requests.exceptions.RequestException:
             response = requests.get(url_comp)
             error_messages = {
-                400: "PUGREST.BadRequest \nRequest is improperly formed (syntax error in the URL, POST body, etc.)",
-                404: "PUGREST.NotFound\nThe input record was not found (e.g. invalid CID)",
-                405: "PUGREST.NotAllowed \nRequest not allowed (such as invalid MIME type in the HTTP Accept header)",
-                504: "PUGREST.Timeout \nThe request timed out, from server overload or too broad a request",
-                503: "PUGREST.ServerBusy	Too many requests or server is busy, retry later",
-                501: "PUGREST.Unimplemented \nThe requested operation has not (yet) been implemented by the server",
-                500: "PUGREST.ServerError \nSome problem on the server side (such as a database server down, etc.)\n   or\n PUGREST.Unknown \nAn unknown error occurred"
+                400: "PUGREST.BadRequest \nLa solicitud está mal formada (error de sintaxis en la URL, cuerpo POST, etc.)",
+                404: "PUGREST.NotFound\nEl registro de entrada no fue encontrado (por ejemplo, CID inválido)",
+                405: "PUGREST.NotAllowed \nSolicitud no permitida (como tipo MIME inválido en el encabezado HTTP Accept)",
+                504: "PUGREST.Timeout \nLa solicitud ha expirado debido a una sobrecarga del servidor o a una solicitud demasiado amplia",
+                503: "PUGREST.ServerBusy\nDemasiadas solicitudes o el servidor está ocupado, intente nuevamente más tarde",
+                501: "PUGREST.Unimplemented \nLa operación solicitada aún no ha sido implementada por el servidor",
+                500: "PUGREST.ServerError \nAlgun problema en el lado del servidor (como un servidor de base de datos caído, etc.)\n   o\n PUGREST.Unknown \nSe ha producido un error desconocido"
             }
             print("Error en la solicitud:", response.status_code, error_messages[response.status_code])
             return None
@@ -96,10 +100,9 @@ def obtener_informacion_compuesto(cid):
     response = requests.get(url)
     if response.status_code == 200:
         data = response.json()
-            # print data
         return data
-    #else:
-    #    print("Error en la solicitud:", response.status_code)
+
+
 
 def borrar_todo():
     global comp_name_list
@@ -107,29 +110,6 @@ def borrar_todo():
         if os.path.exists(str(comp_name)+".txt"):
             os.remove(str(comp_name)+".txt")
             print(f"El archivo {str(comp_name)+".txt"} ha sido borrado exitosamente.")
-        """
         else:
-            print(f"El archivo {str(comp_name)+".txt"} no existe.")
-        """
+            pass
 
-def graficar_estadisticas(estadisticas):
-    variables = estadisticas['Variable']
-    cantidad_datos = estadisticas['Cantidad de datos']
-    promedio = estadisticas['Promedio de la variable']
-    desviacion_estandar = estadisticas['Desviación estandar']
-    valor_minimo = estadisticas['Valor mínimo']
-    cuartil_1 = estadisticas['Percentil 25 o Cuartil 1']
-    mediana = estadisticas['Percentil 50 o Mediana']
-    cuartil_3 = estadisticas['Percentil 75 o Cuartil 3']
-    valor_maximo = estadisticas['Valor máximo']
- 
-    fig, axes = plt.subplots(nrows=2, ncols=3, figsize=(15, 10))
- 
-    for i, ax in enumerate(axes.flatten()):
-        if i < len(variables):
-            ax.bar(['Cantidad de datos', 'Promedio', 'Desviación estándar', 'Mínimo', 'Cuartil 1', 'Mediana', 'Cuartil 3', 'Máximo'],
-                   [cantidad_datos[i], promedio[i], desviacion_estandar[i], valor_minimo[i], cuartil_1[i], mediana[i], cuartil_3[i], valor_maximo[i]])
-            ax.set_title(f'Estadísticas de {variables[i]}')
- 
-    plt.tight_layout()
-    plt.show()
