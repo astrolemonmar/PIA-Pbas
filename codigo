@@ -1,0 +1,213 @@
+import json
+import os
+import requests
+import pandas as pd
+import matplotlib.pyplot as plt
+
+comp_name_list = []
+
+def normalize(s):
+    replacements = (
+        ("á", "a"),
+        ("é", "e"),
+        ("í", "i"),
+        ("ó", "o"),
+        ("ú", "u"),
+    )
+    for a, b in replacements:
+        s = s.replace(a, b)
+        s = s.casefold()
+    return s
+
+def menu():
+    while True:
+        print("1. Consultas web: Descarga información del compuesto que desees")
+        print("2. Consultas de registros: Consulta la información descargada")
+        print("3. Estadísticas")
+        print("4. Gráficas")
+        print("5. Borrar todo")
+        print("6. Salir")
+
+        opcion = input("Ingrese el número de la opción deseada: ")
+
+        if opcion == "1":
+            url_base = "https://pubchem.ncbi.nlm.nih.gov/rest/pug"
+            consulta = ConsultaAPI(url_base)
+
+            comp_name = input("Ingrese el nombre del compuesto a buscar: ")
+            comp_name = normalize(comp_name)
+            cid = consulta.realizar_consulta(comp_name)
+
+            data_json = obtener_informacion_compuesto(cid)
+            if data_json is None:
+                print("Archivo no guardado")
+            else:
+                comp_name_list.append(comp_name)
+                data_str = json.dumps(data_json, indent=4)
+                with open(f"{comp_name}.txt", "w") as file:
+                    file.write(data_str)
+        elif opcion == "2":
+            if len(comp_name_list) == 0:
+                print("No hay datos disponibles. Realiza consultas web primero.")
+            else:
+                df_compuestos = pd.DataFrame(tomar_datos(comp_name_list))
+                print(df_compuestos)
+        elif opcion == "3":
+            if len(comp_name_list) == 0:
+                print("No hay datos disponibles. Realiza consultas web primero.")
+            else:
+                df_compuestos = pd.DataFrame(tomar_datos(comp_name_list))
+                estadisticas = generar_estadisticas(df_compuestos)
+                df_estadisticas = pd.DataFrame(estadisticas)
+                print("\nEstadísticas de los compuestos:")
+                print(df_estadisticas)
+        elif opcion == "4":
+            if len(comp_name_list) == 0:
+                print("No hay datos disponibles. Realiza consultas web primero.")
+            else:
+                df_compuestos = pd.DataFrame(tomar_datos(comp_name_list))
+                estadisticas = generar_estadisticas(df_compuestos)
+                graficar_estadisticas(estadisticas)
+        elif opcion == "5":
+            borrar_todo()
+        elif opcion == "6":
+            borrar_todo()
+            break
+        else:
+            print("Opción no válida. Por favor, seleccione una opción válida.")
+
+class ConsultaAPI:
+    def __init__(self, url_base):
+        self.url_base = url_base
+
+    def realizar_consulta(self, comp_name):
+        url_comp = f"{self.url_base}/compound/name/{comp_name}/cids/JSON"
+
+        try:
+            response = requests.get(url_comp)
+            response.raise_for_status() 
+            data = response.json()
+            cid = data["IdentifierList"]["CID"][0]
+            return cid
+        except requests.exceptions.RequestException:
+            response = requests.get(url_comp)
+            error_messages = {
+                400: "PUGREST.BadRequest \nRequest is improperly formed (syntax error in the URL, POST body, etc.)",
+                404: "PUGREST.NotFound\nThe input record was not found (e.g. invalid CID)",
+                405: "PUGREST.NotAllowed \nRequest not allowed (such as invalid MIME type in the HTTP Accept header)",
+                504: "PUGREST.Timeout \nThe request timed out, from server overload or too broad a request",
+                503: "PUGREST.ServerBusy	Too many requests or server is busy, retry later",
+                501: "PUGREST.Unimplemented \nThe requested operation has not (yet) been implemented by the server",
+                500: "PUGREST.ServerError \nSome problem on the server side (such as a database server down, etc.)\n   or\n PUGREST.Unknown \nAn unknown error occurred"
+            }
+            print("Error en la solicitud:", response.status_code, error_messages[response.status_code])
+            return None
+
+def obtener_informacion_compuesto(cid):
+    if cid is None:
+        return None
+    
+    base_url = "https://pubchem.ncbi.nlm.nih.gov/rest/pug"
+    url = f"{base_url}/compound/cid/{cid}/JSON"
+    
+    response = requests.get(url)
+    if response.status_code == 200:
+        data = response.json()
+        return data
+
+def tomar_datos(comp_name_list):
+    datos_compuestos = []
+    for comp_name in comp_name_list:
+        with open(f"{comp_name}.txt", "r") as file:
+            data_json = json.load(file)
+            nombre = str(obtener_valor_por_clave(data_json, "Traditional", "sval"))
+            masa_molecular = obtener_valor_por_clave(data_json, "Molecular Weight", "sval")
+            if obtener_valor_por_clave(data_json, "Molecular Weight", "sval") == None:
+                masa_molecular = None
+            else:
+                masa_molecular = float(masa_molecular)
+            logp = obtener_valor_por_clave(data_json, "Log P", "fval")
+            if obtener_valor_por_clave(data_json, "Log P", "fval") == None:
+                logp = None
+            else:
+                logp = float(logp)
+            protones_acepta = obtener_valor_por_clave(data_json, "Hydrogen Bond Acceptor", "ival")
+            if obtener_valor_por_clave(data_json, "Hydrogen Bond Acceptor", "ival") == None:
+                protones_acepta = None
+            else:
+                protones_acepta = int(protones_acepta)
+            protones_cede = obtener_valor_por_clave(data_json, "Hydrogen Bond Donor", "ival")
+            if obtener_valor_por_clave(data_json, "Hydrogen Bond Donor", "ival")== None:
+                protones_cede = None
+            else:
+                protones_cede = int(protones_cede)
+            enlances_rotables = obtener_valor_por_clave(data_json, "Rotatable Bond", "ival")
+            if obtener_valor_por_clave(data_json, "Rotatable Bond", "ival") == None:
+                enlances_rotables = None
+            else:
+                enlaces_rotables = int(enlances_rotables)
+            datos_compuestos.append({'Nombre': nombre,
+                                     'Masa Molecular': masa_molecular,
+                                     'LogP': logp,
+                                     'Protones que Acepta': protones_acepta,
+                                     'Protones que Cede': protones_cede,
+                                     'Enlaces que rotan': enlances_rotables})
+    print(f"Datos del compuesto", datos_compuestos)
+    return datos_compuestos
+
+def obtener_valor_por_clave(data_json, clave_buscada, clave_valor):
+    for prop in data_json['PC_Compounds'][0]['props']:
+        if prop['urn']['label'] == clave_buscada:
+            valor = prop['value'].get(clave_valor)
+            return valor
+        elif 'name' in prop['urn'] and prop['urn']['name'] == clave_buscada:
+            valor = prop['value'].get(clave_valor)
+            return valor
+    return None
+
+def generar_estadisticas(df_compuestos):
+    calculos = {
+        'Variable': ['Masa Molecular', 'LogP', 'Protones que Acepta', 'Protones que Cede', 'Enlaces que rotan'],
+        'Cantidad de datos': [df_compuestos['Masa Molecular'].count(), df_compuestos['LogP'].count(),
+                  df_compuestos['Protones que Acepta'].count(), df_compuestos['Protones que Cede'].count(), df_compuestos['Enlaces que rotan'].count()],
+        'Promedio de la variable': [df_compuestos['Masa Molecular'].mean(), df_compuestos['LogP'].mean(),
+                 df_compuestos['Protones que Acepta'].mean(), df_compuestos['Protones que Cede'].mean(), df_compuestos['Enlaces que rotan'].mean()],
+        'Desviación estandar': [df_compuestos['Masa Molecular'].std(), df_compuestos['LogP'].std(),
+                df_compuestos['Protones que Acepta'].std(), df_compuestos['Protones que Cede'].std(), df_compuestos['Enlaces que rotan'].std()],
+        'Valor mínimo': [df_compuestos['Masa Molecular'].min(), df_compuestos['LogP'].min(),
+                df_compuestos['Protones que Acepta'].min(), df_compuestos['Protones que Cede'].min(), df_compuestos['Enlaces que rotan'].min()],
+        'Percentil 25 o Cuartil 1': [df_compuestos['Masa Molecular'].quantile(0.25), df_compuestos['LogP'].quantile(0.25),
+                df_compuestos['Protones que Acepta'].quantile(0.25), df_compuestos['Protones que Cede'].quantile(0.25), df_compuestos['Enlaces que rotan'].quantile(0.25)],
+        'Percentil 50 o Mediana': [df_compuestos['Masa Molecular'].quantile(0.5), df_compuestos['LogP'].quantile(0.5),
+                df_compuestos['Protones que Acepta'].quantile(0.5), df_compuestos['Protones que Cede'].quantile(0.5), df_compuestos['Enlaces que rotan'].quantile(0.5)],
+        'Percentil 75 o Cuartil 3': [df_compuestos['Masa Molecular'].quantile(0.75), df_compuestos['LogP'].quantile(0.75),
+                df_compuestos['Protones que Acepta'].quantile(0.75), df_compuestos['Protones que Cede'].quantile(0.75), df_compuestos['Enlaces que rotan'].quantile(0.75)],
+        'Valor máximo': [df_compuestos['Masa Molecular'].max(), df_compuestos['LogP'].max(),
+                df_compuestos['Protones que Acepta'].max(), df_compuestos['Protones que Cede'].max(), df_compuestos['Enlaces que rotan'].max()],
+    }
+    return calculos
+
+def graficar_estadisticas(estadisticas):
+    variables = estadisticas['Variable']
+    cantidad_datos = estadisticas['Cantidad de datos']
+    promedio = estadisticas['Promedio de la variable']
+    desviacion_estandar = estadisticas['Desviación estandar']
+    valor_minimo = estadisticas['Valor mínimo']
+    cuartil_1 = estadisticas['Percentil 25 o Cuartil 1']
+    mediana = estadisticas['Percentil 50 o Mediana']
+    cuartil_3 = estadisticas['Percentil 75 o Cuartil 3']
+    valor_maximo = estadisticas['Valor máximo']
+
+    fig, axes = plt.subplots(nrows=2, ncols=3, figsize=(15, 10))
+
+    for i, ax in enumerate(axes.flatten()):
+        if i < len(variables):
+            ax.bar(['Cantidad de datos', 'Promedio', 'Desviación estándar', 'Mínimo', 'Cuartil 1', 'Mediana', 'Cuartil 3', 'Máximo'],
+                   [cantidad_datos[i], promedio[i], desviacion_estandar[i], valor_minimo[i], cuartil_1[i], mediana[i], cuartil_3[i], valor_maximo[i]])
+            ax.set_title(f'Estadísticas de {variables[i]}')
+
+    plt.tight_layout()
+    plt.show()
+
+if __name__ == "__main__":
+    menu()
