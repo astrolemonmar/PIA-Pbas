@@ -5,6 +5,8 @@ import openpyxl
 import matplotlib as plt 
 from openpyxl import load_workbook
 import pandas as pd
+from estadísticas import *
+from graficas import *
 
 def normalize(s):
     replacements = (
@@ -71,6 +73,17 @@ def menu():
             else:
                 print("Aun no hay archivos descargados.")
             #abrir_xlsx(comp_name_list)
+        
+        elif opcion == 3:
+            pass
+        
+        elif opcion == 4:
+            if len(comp_name_list) == 0:
+                print("No hay datos disponibles. Realiza consultas web primero.")
+            else:
+                df_compuestos = pd.DataFrame(tomar_datos(comp_name_list))
+                estadisticas = generar_estadisticas(df_compuestos)
+                graficar_estadisticas(estadisticas)
         
         elif opcion == 5:
             borrar_todo()
