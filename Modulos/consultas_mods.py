@@ -7,7 +7,6 @@ from openpyxl import load_workbook
 import pandas as pd
 from estadísticas import *
 from graficas import *
-
 def normalize(s):
     replacements = (
         ("á", "a"),
@@ -22,8 +21,11 @@ def normalize(s):
     return s
 
 comp_name_list = [ ] #lista que almacena todos los nombres de compuestos que buscamos
+excel_list = [ ]
+carpeta_consulta = "Reportes de Consulta Api"
+
 def menu():
-    global comp_name_list
+    global comp_name_list, excel_list
     print("1. Consultas web: Descarga información del compuesto que desees")
     print("2. Consultas de registros: Consulta la información descargada")
     print("3. Estadísticas")
@@ -48,10 +50,12 @@ def menu():
                 if data_json is None:
                     print("Archivo no guardado")
                 else:
+                    carpeta_destino = "Reportes de Consulta Api"
                     comp_name_list.append(comp_name)
                     data_str = json.dumps(data_json, indent=4)
-                    with open(str(comp_name)+".txt", "w") as file:
-                        file.write(data_str)
+                    ruta_archivo = os.path.join(carpeta_destino, f"{comp_name}.txt")
+                    with open(ruta_archivo, "w") as archivo:
+                        archivo.write(data_str)
                     print(f"Archivo {comp_name} guardado con éxito!")
 
             except requests.exceptions.RequestException:
@@ -61,7 +65,7 @@ def menu():
                     j = 0
                     for i in comp_name_list:
                         j += 1
-                        print("f{j}" ,i)
+                        print(f"{j}." ,i)
         elif opcion == 2:
             if len(comp_name_list) > 0:
                 pd.set_option('display.max_rows', None)
@@ -76,22 +80,28 @@ def menu():
             if len(comp_name_list) == 0:
                 print("No hay datos disponibles. Realiza consultas web primero.")
             else:
-                df_compuestos = pd.DataFrame(tomar_datos(comp_name_list))
+                nombre_del_archivo = str(input("Ingrese cómo desea llamar el archivo: "))
+                excel_list.append(nombre_del_archivo)
+                df_compuestos = pd.DataFrame(tomar_datos(comp_name_list, "Reportes de Consulta Api"))
                 estadisticas = generar_estadisticas(df_compuestos)
                 df_estadisticas = pd.DataFrame(estadisticas)
-                print("\nEstadísticas de los compuestos:")
-                print(df_estadisticas)
+                # Guardar los datos y cálculos en un archivo Excel
+                with pd.ExcelWriter(os.path.join("Reportes de datos numericos", nombre_del_archivo + ".xlsx")) as writer:
+                    df_compuestos.to_excel(writer, sheet_name='Datos Compuestos', index=False)
+                    df_estadisticas.to_excel(writer, sheet_name='Datos Cálculos', index=False)
+               
+                print(f"Los datos y cálculos se han guardado en el archivo Excel: '{nombre_del_archivo}'")
         elif opcion == 4:
             if len(comp_name_list) == 0:
                 print("No hay datos disponibles. Realiza consultas web primero.")
             else:
-                df_compuestos = pd.DataFrame(tomar_datos(comp_name_list))
+                df_compuestos = pd.DataFrame(tomar_datos(comp_name_list, "Reportes de Consulta Api"))
                 estadisticas = generar_estadisticas(df_compuestos)
                 graficar_estadisticas(estadisticas)
         elif opcion == 5:
-            borrar_todo()
+            borrar_todo(carpeta_consulta)
         elif opcion == 6:
-            borrar_todo()
+            borrar_todo(carpeta_consulta)
             opcion = False
             return opcion
         else:
@@ -144,12 +154,19 @@ def obtener_informacion_compuesto(cid):
 
 
 
-def borrar_todo():
-    global comp_name_list
+def borrar_todo(pathfile):
+    global comp_name_list, excel_list
     for comp_name in (comp_name_list):
-        if os.path.exists(str(comp_name)+".txt"):
-            os.remove(str(comp_name)+".txt")
-            print(f"El archivo {str(comp_name)+".txt"} ha sido borrado exitosamente.")
-        else:
-            pass
+        ruta_archivo = os.path.join(pathfile, f"{comp_name}.txt")
+        if os.path.exists(ruta_archivo):
+            os.remove(ruta_archivo)
+            comp_name_list = []
+#            print(f"El archivo {str(comp_name)+".txt"} ha sido borrado exitosamente.")
+    for excel_files in (excel_list):
+            ruta_xlsx = os.path.join("Reportes de datos numericos", f"{excel_files}.xlsx")
+            if os.path.exists(ruta_xlsx):
+                os.remove(ruta_xlsx)
+                print(f"El archivo {excel_files} ha sido borrado exitosamente.")
+            excel_list = []
+
 

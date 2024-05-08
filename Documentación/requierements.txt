@@ -1,0 +1,6 @@
+requests
+openpyxl
+pandas
+matplotlib
+os
+json

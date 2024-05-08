@@ -1,6 +1,7 @@
-# PUBCHEM search
+# PIA Programación Básica
+# PubChem Search
 
-Es un script que te permite buscar información sobre compuestos químicos utilizando la API de PubChem. Puedes descargar información detallada sobre un compuesto específico, realizar consultas de registros previamente descargados, generar estadísticas y visualizar gráficos basados en los datos obtenidos.
+Nuestro srcipt te permite buscar información sobre compuestos químicos utilizando la API de PubChem. Con esta aplicación, puedes descargar información detallada sobre un compuesto específico, realizar consultas de registros previamente descargados, generar estadísticas y visualizar gráficos basados en los datos obtenidos.
 
 ## Funcionalidades
 
@@ -11,7 +12,7 @@ Es un script que te permite buscar información sobre compuestos químicos utili
 
 ## Requisitos
 
-Para ejecutar la aplicación, necesitarás tener instalado Python 3 en tu sistema. Además, asegúrate de instalar las dependencias necesarias utilizando el siguiente comando:
+Para ejecutar la aplicación, necesitarás tener instalado Python 3 y asegúrate de instalar las librerías necesarias utilizando el siguiente comando:
 
 ```bash
 pip install -r requirements.txt
