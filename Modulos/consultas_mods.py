@@ -8,6 +8,9 @@ from googletrans import Translator
 
 comp_name_list = [ ]
 excel_list = [ ]
+graph_list = [ ]
+
+
 file_request = "Reportes de Consulta Api"
 file_report = "Reportes de datos numericos"
 file_graph = "Graficas"
@@ -70,25 +73,46 @@ def get_info(cid):
         data = response.json()
         return data
 
-def delate(path_file_request, path_file_report):
-    global comp_name_list, excel_list
+def delate(path_file_request, path_file_report, path_file_graphs):
+    global comp_name_list, excel_list, graph_list
     if len(comp_name_list) > 0:
         for comp_name in (comp_name_list):
             path_file = os.path.join(path_file_request, f"{comp_name}.txt")
             if os.path.exists(path_file):
                 os.remove(path_file)
         comp_name_list = []
-        path_file = ""
 
         for excel_files in (excel_list):
                 path_file = os.path.join(path_file_report, f"{excel_files}.xlsx")
                 if os.path.exists(path_file):
                     os.remove(path_file)
         excel_list = []
+
+        graph_list = graphs.graphs_list_return()
+        for graph in (graph_list):
+            path_file = os.path.join(path_file_graphs, f"{graph}")
+            if os.path.exists(path_file):
+                os.remove(path_file)
         return True
     else:
         return False
 
+def download(path_file_request):
+    print("Consulta tus archivos anteriormente guardados.")
+    j = 0
+    for i in comp_name_list:
+        j += 1
+        print(f"{j}." ,i)
+    comp_name_i = int(input("seleccione un archivo: "))
+    path_file = os.path.join(path_file_request, f"{comp_name_list[comp_name_i-1]}.txt")
+    with open(path_file, 'r') as archivo:
+        contenido = archivo.read()
+    datos = json.loads(contenido)
+    compuestos = datos['PC_Compounds']
+    for compuesto in compuestos:
+        print("ID del compuesto:", compuesto['id']['id']['cid'])
+        print("Fórmula molecular:", compuesto['props'][16]['value']['sval'])
+        print("Peso molecular:", compuesto['props'][15]['value']['sval'])
 
 def menu():
     global comp_name_list, excel_list
@@ -108,8 +132,8 @@ def menu():
                 consulta = RequestAPI(url_base)
 
                 comp_name = input("Ingrese el nombre del compuesto a buscar. En caso ingresarlo en español, se traducirá por fines de búsqueda: ")
-                comp_name = normalize(comp_name)
                 comp_name = translate_compound(comp_name)
+                comp_name = normalize(comp_name)
                 cid = consulta.to_request(comp_name)
 
                 data_json = get_info(cid)
@@ -134,7 +158,7 @@ def menu():
                         print(f"{j}." ,i)
                         
         elif opcion == 2:
-            pass
+            download(file_request)
         elif opcion == 3:
             if len(comp_name_list) == 0:
                 print("No hay datos disponibles. Realiza consultas web primero.")
@@ -157,16 +181,16 @@ def menu():
                 graphs.graficar_compuestos(df_compuestos)
 
         elif opcion == 5:
-            answer = delate(file_request,file_report)
+            answer = delate(file_request,file_report,file_graph)
             if answer == True:
                 print("Archivos borrados exitosamente")
             else:
                 print("No existen archivos registrados para borrar")
 
         elif opcion == 6:
-            delate(file_request,file_report)
+            delate(file_request,file_report,file_graph)
             print("Gracias por utilizar PubChem search c:")
-            return False
+            opcion = False
         else:
             print("Opción no válida. Por favor, seleccione una opción válida.")
             menu()

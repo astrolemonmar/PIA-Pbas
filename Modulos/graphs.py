@@ -1,7 +1,12 @@
 import matplotlib.pyplot as plt
 from main import *#puse esto para  que al finalizar cada grafica te devuelcva al menu principal, o es deberia de hacer
- 
+import os
+
+file_graph = "Graficas"
+graphs_list = [ ]
+
 def graficar_compuestos(df_compuestos):
+    global graphs_list
     while True:
         print("Seleccione qué tipo de grafica desea:")
         print("1. Grafico de pastel")
@@ -54,18 +59,28 @@ def graficar_compuestos(df_compuestos):
                 print("Opcin no válida, seleccione una opción que este disponible.")
         else:
             print("Opción no válida. seleccione una opción que este disponible.")
+
  
- 
+
 def graficar_pastel(df_compuestos, propiedad):
+    global graphs_list
     fig, ax = plt.subplots(figsize=(9, 9))
     aqui_se_agrupan_datos = df_compuestos.groupby('Nombre')[propiedad].mean()
     ax.pie(aqui_se_agrupan_datos, labels=aqui_se_agrupan_datos.index, autopct='%1.1f%%')#esto es para dare forma de pstel y mostrar el porcentaje
     ax.set_title(f'Distribución de {propiedad} entre los Compuestos')
     ax.axis('equal')  
+    
+    # to save
+    ruta_grafica = os.path.join(file_graph, f'{propiedad}_pastel.png')
+    graphs_list.append(f'{propiedad}_pastel.png')
+    plt.savefig(ruta_grafica)
     plt.show()
     main()
+
+
  
 def graficar_barras(df_compuestos, propiedad):
+    global graphs_list
     fig, ax = plt.subplots(figsize=(10, 6))
     ax.set_title(f'{propiedad} de los Compuestos')
     ax.set_xlabel('')
@@ -77,10 +92,18 @@ def graficar_barras(df_compuestos, propiedad):
         ax.bar(compuesto, promedio, color=colors(i), label=compuesto)
     ax.legend(loc='upper center', bbox_to_anchor=(0.5, -0.2), shadow=True, ncol=1)
     plt.tight_layout()
+
+    ruta_grafica = os.path.join(file_graph, f'{propiedad}_barras.png')
+    graphs_list.append(f'{propiedad}_barras.png')
+    plt.savefig(ruta_grafica)
+    plt.show()
+    main()
+
     plt.show()
     main()
  
 def graficar_lineas(df_compuestos, propiedad):
+    global graphs_list
     fig, ax = plt.subplots(figsize=(8, 5))
     for nombre, datos in df_compuestos.groupby('Nombre'):
         ax.plot(datos.index, datos[propiedad], marker='o', label=nombre)
@@ -94,5 +117,11 @@ def graficar_lineas(df_compuestos, propiedad):
     ax.set_xticks([])  #esto quita las etiquetas del eje x
    
     plt.tight_layout()
+    ruta_grafica = os.path.join(file_graph, f'{propiedad}_lineas.png')
+    graphs_list.append(f'{propiedad}_lineas.png')
+    plt.savefig(ruta_grafica)
     plt.show()
     main()
+
+def graphs_list_return():
+    return graphs_list
