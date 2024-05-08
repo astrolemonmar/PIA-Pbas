@@ -10,7 +10,6 @@ comp_name_list = [ ]
 excel_list = [ ]
 graph_list = [ ]
 
-
 file_request = "Reportes de Consulta Api"
 file_report = "Reportes de datos numericos"
 file_graph = "Graficas"
@@ -29,9 +28,14 @@ def normalize(s):
     return s
 
 def translate_compound(compound_name):
-    translator = Translator()
-    translated_text = translator.translate(compound_name, src='es', dest='en')
-    return translated_text.text
+    try:
+        translation_response = requests.get(f"http://api.openweathermap.org/data/2.5/weather?q={compound_name}")
+        translation_response.raise_for_status()
+        translator = Translator()
+        translated_text = translator.translate(compound_name, src='es', dest='en')
+        return translated_text.text
+    except requests.exceptions.RequestException:
+        return compound_name
 
 
 class RequestAPI:
@@ -100,19 +104,34 @@ def delate(path_file_request, path_file_report, path_file_graphs):
 def download(path_file_request):
     print("Consulta tus archivos anteriormente guardados.")
     j = 0
-    for i in comp_name_list:
-        j += 1
-        print(f"{j}." ,i)
-    comp_name_i = int(input("seleccione un archivo: "))
-    path_file = os.path.join(path_file_request, f"{comp_name_list[comp_name_i-1]}.txt")
-    with open(path_file, 'r') as archivo:
-        contenido = archivo.read()
-    datos = json.loads(contenido)
-    compuestos = datos['PC_Compounds']
-    for compuesto in compuestos:
-        print("ID del compuesto:", compuesto['id']['id']['cid'])
-        print("Fórmula molecular:", compuesto['props'][16]['value']['sval'])
-        print("Peso molecular:", compuesto['props'][15]['value']['sval'])
+    
+    if len(comp_name_list) > 0:
+        for i in comp_name_list:
+            j += 1
+            print(f"{j}." ,i)
+        try:
+            comp_name_i = int(input("seleccione un archivo: "))
+            path_file = os.path.join(path_file_request, f"{comp_name_list[comp_name_i-1]}.txt")
+            try:
+                with open(path_file, 'r') as archivo:
+                    contenido = archivo.read()
+            except FileNotFoundError:
+                print("El archivo seleccionado no existe.")
+                download(path_file_request)
+        except Exception as e:
+                print("Error al abrir el archivo:", e)
+                download(path_file_request)
+        try:
+            datos = json.loads(contenido)
+            compuestos = datos['PC_Compounds']
+            for compuesto in compuestos:
+                print("ID del compuesto:", compuesto['id']['id']['cid'])
+                print("Fórmula molecular:", compuesto['props'][16]['value']['sval'])
+                print("Peso molecular:", compuesto['props'][15]['value']['sval'])
+        except ValueError:
+            print("Por favor, ingresa un número válido.")
+            download(path_file_request)
+            
 
 def menu():
     global comp_name_list, excel_list
