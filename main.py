@@ -7,5 +7,7 @@ def main():
     while opcion:
         print("")
         opcion = consultas_mods.menu()
+def menu_cm():
+    pass
 if __name__ == "__main__":
     main()  

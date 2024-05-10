@@ -29,14 +29,13 @@ def normalize(s):
 
 def translate_compound(compound_name):
     try:
-        translation_response = requests.get(f"http://api.openweathermap.org/data/2.5/weather?q={compound_name}")
+        translation_response = requests.get(f"http://www.google.com")
         translation_response.raise_for_status()
         translator = Translator()
-        translated_text = translator.translate(compound_name, src='es', dest='en')
+        translated_text = translator.translate(compound_name, src="es", dest="en")
         return translated_text.text
     except requests.exceptions.RequestException:
         return compound_name
-
 
 class RequestAPI:
     def __init__(self, url_base):
@@ -66,16 +65,49 @@ class RequestAPI:
             return None
 
 def get_info(cid):
-    if cid is None:
+    try:
+        if cid is None:
+            return None
+        
+        base_url = "https://pubchem.ncbi.nlm.nih.gov/rest/pug"
+        url = f"{base_url}/compound/cid/{cid}/JSON"
+        
+        response = requests.get(url)
+        if response.status_code == 200:
+            data = response.json()
+            return data
+    except requests.exceptions.RequestException as e:
         return None
     
-    base_url = "https://pubchem.ncbi.nlm.nih.gov/rest/pug"
-    url = f"{base_url}/compound/cid/{cid}/JSON"
-    
-    response = requests.get(url)
-    if response.status_code == 200:
-        data = response.json()
-        return data
+def txt_files():
+    try:
+        url_base = "https://pubchem.ncbi.nlm.nih.gov/rest/pug"
+        consulta = RequestAPI(url_base)
+        comp_name = input("Nombre del compuesto: ")
+        comp_name = translate_compound(comp_name)               
+        comp_name = normalize(comp_name)
+        cid = consulta.to_request(comp_name)
+
+        data_json = get_info(cid)
+        if data_json is None:
+            pass
+        else:
+            carpeta_txt = "Reportes de Consulta Api"
+            comp_name_list.append(comp_name)
+            data_str = json.dumps(data_json, indent=4)
+            ruta_archivo = os.path.join(carpeta_txt, f"{comp_name}.txt")
+            with open(ruta_archivo, "w") as archivo:
+                archivo.write(data_str)
+                print(f"Archivo guardado como: {comp_name}.txt")
+
+    except requests.exceptions.RequestException:
+        print("No se puede conectar a Internet. Por favor, verifica tu conexión y vuelve a intentarlo.")
+        if len(comp_name_list) > 0:
+            print("O consulta tus archivos anteriormente guardados.")
+            j = 0
+            for i in comp_name_list:
+                j += 1
+                print(f"\t{j}." ,i)
 
 def delate(path_file_request, path_file_report, path_file_graphs):
     global comp_name_list, excel_list, graph_list
@@ -103,35 +135,46 @@ def delate(path_file_request, path_file_report, path_file_graphs):
 
 def download(path_file_request):
     print("Consulta tus archivos anteriormente guardados.")
-    j = 0
-    
     if len(comp_name_list) > 0:
+        j = 0
         for i in comp_name_list:
             j += 1
-            print(f"{j}." ,i)
+            print(f"\t{j}." ,i)
+
         try:
-            comp_name_i = int(input("seleccione un archivo: "))
-            path_file = os.path.join(path_file_request, f"{comp_name_list[comp_name_i-1]}.txt")
-            try:
-                with open(path_file, 'r') as archivo:
-                    contenido = archivo.read()
-            except FileNotFoundError:
-                print("El archivo seleccionado no existe.")
-                download(path_file_request)
-        except Exception as e:
-                print("Error al abrir el archivo:", e)
-                download(path_file_request)
-        try:
-            datos = json.loads(contenido)
-            compuestos = datos['PC_Compounds']
-            for compuesto in compuestos:
-                print("ID del compuesto:", compuesto['id']['id']['cid'])
-                print("Fórmula molecular:", compuesto['props'][16]['value']['sval'])
-                print("Peso molecular:", compuesto['props'][15]['value']['sval'])
+            comp_name_i = int(input("Selecciona un archivo: ")) - 1
+            if 0 <= comp_name_i < len(comp_name_list):
+                comp_file_name = comp_name_list[comp_name_i]
+                path_file = os.path.join(path_file_request, f"{comp_file_name}.txt")
+                
+                try:
+                    with open(path_file, "r") as archivo:
+                        contenido = archivo.read()
+                        data = json.loads(contenido)
+                        
+                    compuestos = data.get("PC_Compounds", [])
+                    if compuestos:
+                        for compuesto in compuestos:
+                            print("ID del compuesto:", compuesto["id"]["id"]["cid"])
+                            print("Fórmula molecular:", compuesto["props"][16]["value"]["sval"])
+                            print("Peso molecular:", compuesto["props"][15]["value"]["sval"])
+                    else:
+                        print("No se encontraron datos de compuestos en el archivo.")
+                
+                except FileNotFoundError:
+                    print("El archivo seleccionado no existe.")
+                except ValueError:
+                    print("El archivo seleccionado no contiene datos válidos.")
+            else:
+                print("Selecciona un número de archivo válido.")
+        
         except ValueError:
-            print("Por favor, ingresa un número válido.")
-            download(path_file_request)
-            
+            print("Por favor, ingresa un número válido para seleccionar un archivo.")
+
+    else:
+        print("No hay datos disponibles. Realiza consultas web primero.")
+        return None
+
 
 def menu():
     global comp_name_list, excel_list
@@ -146,51 +189,26 @@ def menu():
     try:
         opcion = int(opcion)
         if opcion == 1:
-            try:
-                url_base = "https://pubchem.ncbi.nlm.nih.gov/rest/pug"
-                consulta = RequestAPI(url_base)
+            txt_files()
 
-                comp_name = input("Ingrese el nombre del compuesto a buscar. En caso ingresarlo en español, se traducirá por fines de búsqueda: ")
-                comp_name = translate_compound(comp_name)
-                comp_name = normalize(comp_name)
-                cid = consulta.to_request(comp_name)
-
-                data_json = get_info(cid)
-                if data_json is None:
-                    print("Archivo no guardado")
-                else:
-                    carpeta_txt = "Reportes de Consulta Api"
-                    comp_name_list.append(comp_name)
-                    data_str = json.dumps(data_json, indent=4)
-                    ruta_archivo = os.path.join(carpeta_txt, f"{comp_name}.txt")
-                    with open(ruta_archivo, "w") as archivo:
-                        archivo.write(data_str)
-                    print(f"Archivo {comp_name} guardado con éxito!")
-
-            except requests.exceptions.RequestException:
-                print("No se puede conectar a Internet. Por favor, verifica tu conexión y vuelve a intentarlo.")
-                if len(comp_name_list) > 0:
-                    print("O consulta tus archivos anteriormente guardados.")
-                    j = 0
-                    for i in comp_name_list:
-                        j += 1
-                        print(f"{j}." ,i)
-                        
         elif opcion == 2:
-            download(file_request)
+            answer = download(file_request)
+            if answer is None:
+                pass
+
         elif opcion == 3:
             if len(comp_name_list) == 0:
                 print("No hay datos disponibles. Realiza consultas web primero.")
             else:
-                nombre_del_archivo = str(input("Ingrese cómo desea llamar el archivo: "))
+                nombre_del_archivo = str(input("Nombre del nuevo archivo Excel: "))
                 excel_list.append(nombre_del_archivo)
                 df_compuestos = pd.DataFrame(stats.tomar_datos(comp_name_list, file_request))
                 estadisticas = stats.generar_estadisticas(df_compuestos)
                 df_estadisticas = pd.DataFrame(estadisticas)
                 with pd.ExcelWriter(os.path.join("Reportes de datos numericos", nombre_del_archivo + ".xlsx")) as writer:
-                    df_compuestos.to_excel(writer, sheet_name='Datos Compuestos', index=False)
-                    df_estadisticas.to_excel(writer, sheet_name='Datos Cálculos', index=False)
-                print(f"Los datos y cálculos se han guardado en el archivo Excel: '{nombre_del_archivo}'")
+                    df_compuestos.to_excel(writer, sheet_name="Datos Compuestos", index=False)
+                    df_estadisticas.to_excel(writer, sheet_name="Datos Cálculos", index=False)
+                print(f"Los datos y cálculos se han guardado en el archivo Excel: '{nombre_del_archivo}.xlsx' ")
 
         elif opcion == 4:
             if len(comp_name_list) == 0:
@@ -210,10 +228,11 @@ def menu():
             delate(file_request,file_report,file_graph)
             print("Gracias por utilizar PubChem search c:")
             opcion = False
+            
         else:
-            print("Opción no válida. Por favor, seleccione una opción válida.")
+            print("Opción no válida. Por favor, selecciona una opción válida.")
             menu()
         return opcion
     except ValueError:
-        print("Opción no válida. Por favor, seleccione una opción válida.")
+        print("Opción no válida. Por favor, selecciona una opción válida.")
         menu()
